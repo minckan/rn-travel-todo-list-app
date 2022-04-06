@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TouchableOpacity, TextInput, ScrollView,Alert } from 'react-native';
-import { useState , useEffect} from 'react';
+import { useState, useEffect } from 'react';
 import { theme } from './color'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AntDesign } from '@expo/vector-icons'; 
@@ -14,8 +14,8 @@ export default function App() {
   const [text, setText] = useState('')
   const [todos, setTodos] = useState({})
   useEffect(() => {
-    loadTodos()
-    loadWorkingStatus()
+     loadTodos()
+     loadWorkingStatus()
   }, [])
 
   const travel = () => {
@@ -28,8 +28,8 @@ export default function App() {
   }
   const saveWorkingStatus = async (status) => {
     try {
-      await AsyncStorage.setItem(STORAGE_KEY_STATUS, String(status))
-      console.log(String(status));
+      const jsonValue = JSON.stringify({status})
+      await AsyncStorage.setItem(STORAGE_KEY_STATUS, jsonValue)
     } catch (e) {
       // saving error
       console.log(e);
@@ -38,8 +38,8 @@ export default function App() {
   const loadWorkingStatus = async () => {
     try {
       const value = await AsyncStorage.getItem(STORAGE_KEY_STATUS)
-      console.log(Boolean(value));
-      setWorking(Boolean(value))
+      const { status } = JSON.parse(value)
+      setWorking(status)
     } catch (error) {
       
     }
@@ -55,11 +55,12 @@ export default function App() {
   }
   const loadTodos = async () => {
     try {
-      const jsonValue = await AsyncStorage.getItem(STORAGE_KEY)
+      const jsonValue = await AsyncStorage.getItem(STORAGE_KEY_TODOS)
       setTodos(JSON.parse(jsonValue))
-      
+      // setTodos({})
     } catch(e) {
       // error reading value
+      console.log(e);
     }
   }
 
@@ -70,10 +71,28 @@ export default function App() {
 
     // save to do
     // const newTodos = Object.assign({}, todos, { [Date.now()]: { text, work: working } })
-    const newTodos = { ...todos, [Date.now()]: { text, working } }
+    const newTodos = { ...todos, [Date.now()]: { text, working, completed: false, editable: false } }
+    console.log(newTodos);
     setTodos(newTodos);
     await saveTodos(newTodos)
     setText('')
+  }
+
+  const checkCompleted = (key) => {
+    const newTodos = { ...todos }
+    newTodos[key].completed = !newTodos[key].completed
+    setTodos(newTodos)
+  }
+  const doEdit = (key) => {
+    const newTodos = { ...todos }
+    newTodos[key].editable = true
+    setTodos(newTodos)
+  }
+  
+  const handleEdit = (key) => {
+    const newTodos = { ...todos }
+    newTodos[key].text = true
+    setTodos(newTodos)
   }
 
   const deleteTodo = (key) => {
@@ -113,10 +132,25 @@ export default function App() {
         {
           Object.keys(todos).map((key, idx) =>
             todos[key].working === working ? <View style={styles.todo} key={idx}>
-              <Text style={styles.todoText}>{todos[key].text}</Text>
-              <TouchableOpacity onPress={() => deleteTodo(key)}>
-                <Text><AntDesign name="closecircleo" size={24} color="white" /></Text>
-              </TouchableOpacity>
+              <View style={styles.flexRow}>
+                <TouchableOpacity onPress={() => checkCompleted(key)} >
+                  <AntDesign name="checkcircle" size={24} color={todos[key].completed ? 'red' : 'grey'} />
+                </TouchableOpacity>
+                {
+                  todos[key].editable
+                  ? <TextInput value={todos[key].text} style={styles.todoText}></TextInput>
+                  : <Text style={styles.todoText}>{todos[key].text}</Text>
+                }
+                
+              </View>
+              <View style={styles.flexRow}>
+                <TouchableOpacity onPress={() => doEdit(key)}>
+                  <AntDesign name="edit" size={24} color="white" style={ styles.edit}/>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => deleteTodo(key)}>
+                  <Text><AntDesign name="closecircleo" size={24} color="white" /></Text>
+                </TouchableOpacity>
+              </View>
           </View> : null)
         }
       </ScrollView>
@@ -162,6 +196,14 @@ const styles = StyleSheet.create({
   todoText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: '500'
+    fontWeight: '500',
+    marginLeft: 20
+  },
+  flexRow: {
+    flexDirection: 'row', 
+    alignItems:'center'
+  },
+  edit: {
+    marginRight: 15
   }
 });
